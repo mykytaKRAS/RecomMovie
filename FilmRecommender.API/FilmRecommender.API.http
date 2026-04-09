@@ -1,0 +1,10 @@
+@FilmRecommender.API_HostAddress = https://localhost:7003
+
+GET {{FilmRecommender.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+GET {{FilmRecommender.API_HostAddress}}/api/genres
+###
+GET https://localhost:7003/api/genres
+Accept: application/json
