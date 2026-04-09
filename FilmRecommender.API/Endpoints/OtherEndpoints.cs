@@ -1,8 +1,9 @@
-﻿using FilmRecommender.Application.DTOs;
+﻿using FilmRecommender.API.Extensions;
+using FilmRecommender.Application.DTOs;
 using FilmRecommender.Application.Services;
 using FilmRecommender.Domain.Interfaces;
 
-namespace FilmRecommender.API.Extensions;
+namespace FilmRecommender.API.Endpoints;
 
 // ── Genre ─────────────────────────────────────────────────────
 
@@ -29,6 +30,11 @@ public static class RatingEndpoints
         var group = app.MapGroup("/api/ratings")
             .WithTags("Ratings")
             .RequireAuthorization();
+
+        group.MapGet("/my", async (RatingService svc, HttpContext ctx) =>
+            Results.Ok(await svc.GetMyRatingsAsync(ctx.GetUserId())))
+        .WithName("GetMyRatings")
+        .WithSummary("Мої оцінки фільмів");
 
         group.MapPost("/", async (CreateRatingRequest req, RatingService svc, HttpContext ctx) =>
         {
@@ -113,10 +119,10 @@ public static class WatchListEndpoints
             .WithTags("WatchList")
             .RequireAuthorization();
 
-        group.MapGet("/", async (WatchListService svc, HttpContext ctx) =>
-            Results.Ok(await svc.GetByUserAsync(ctx.GetUserId())))
+        group.MapGet("/", async (WatchListService svc, HttpContext ctx, string? status) =>
+            Results.Ok(await svc.GetByUserAsync(ctx.GetUserId(), status)))
         .WithName("GetWatchList")
-        .WithSummary("Мій список перегляду");
+        .WithSummary("Мій список перегляду. Фільтр статусу: want | watching | watched");
 
         group.MapPost("/", async (
             AddToWatchListRequest req, WatchListService svc, HttpContext ctx) =>
@@ -132,6 +138,10 @@ public static class WatchListEndpoints
         group.MapPut("/{id:guid}", async (
             Guid id, UpdateWatchStatusRequest req, WatchListService svc, HttpContext ctx) =>
         {
+            var valid = new[] { "want", "watching", "watched" };
+            if (!valid.Contains(req.Status))
+                return Results.BadRequest(new ErrorResponse("Статус має бути: want, watching або watched"));
+
             var success = await svc.UpdateStatusAsync(ctx.GetUserId(), id, req.Status);
             return success
                 ? Results.Ok(new SuccessResponse("Статус оновлено"))

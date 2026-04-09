@@ -106,8 +106,35 @@ public class MovieService
 public class RatingService
 {
     private readonly IUserRatingRepository _ratings;
+    private readonly IMovieRepository _movies;
 
-    public RatingService(IUserRatingRepository ratings) => _ratings = ratings;
+    public RatingService(IUserRatingRepository ratings, IMovieRepository movies)
+    {
+        _ratings = ratings;
+        _movies = movies;
+    }
+
+    // Список моїх оцінок з інформацією про фільм
+    public async Task<IEnumerable<MyRatingDto>> GetMyRatingsAsync(Guid userId)
+    {
+        var ratings = await _ratings.GetByUserIdAsync(userId);
+        var result = new List<MyRatingDto>();
+
+        foreach (var r in ratings)
+        {
+            var movie = await _movies.GetByIdAsync(r.MovieId);
+            if (movie is null) continue;
+
+            result.Add(new MyRatingDto(
+                r.Id,
+                MovieService.ToSummary(movie),
+                r.Rating,
+                r.Review,
+                r.RatedAt));
+        }
+
+        return result;
+    }
 
     public async Task<Guid?> CreateAsync(Guid userId, CreateRatingRequest req)
     {
@@ -161,9 +188,14 @@ public class WatchListService
         _movies = movies;
     }
 
-    public async Task<IEnumerable<WatchListItemDto>> GetByUserAsync(Guid userId)
+    // Список з опціональним фільтром статусу
+    public async Task<IEnumerable<WatchListItemDto>> GetByUserAsync(Guid userId, string? status = null)
     {
         var items = await _watchList.GetByUserIdAsync(userId);
+
+        if (status is not null)
+            items = items.Where(i => i.Status == status);
+
         var result = new List<WatchListItemDto>();
 
         foreach (var item in items)

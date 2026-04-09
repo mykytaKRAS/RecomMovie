@@ -1,3 +1,4 @@
+using FilmRecommender.API.Endpoints;
 using FilmRecommender.API.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,7 @@ app.UseAuthorization();
 
 app.MapAuthEndpoints();
 app.MapMovieEndpoints();
+app.MapUserEndpoints();
 app.MapGenreEndpoints();
 app.MapRatingEndpoints();
 app.MapSurveyEndpoints();

@@ -149,3 +149,22 @@ public record ErrorResponse(
 public record SuccessResponse(
     string Message
 );
+
+// ── User ──────────────────────────────────────────
+
+public record UserProfileDto(
+    Guid Id,
+    string Username,
+    string Email,
+    DateTime CreatedAt
+);
+
+// ── My ratings ────────────────────────────────────
+
+public record MyRatingDto(
+    Guid RatingId,
+    MovieSummaryDto Movie,
+    decimal Rating,
+    string? Review,
+    DateTime RatedAt
+);
