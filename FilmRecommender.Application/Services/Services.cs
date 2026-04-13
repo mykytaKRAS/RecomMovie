@@ -73,7 +73,8 @@ public class AuthService
             claims: claims,
             expires: expires,
             signingCredentials: creds);
-
+        Console.WriteLine("GENERATE ISSUER: " + _config["Jwt:Issuer"]);
+        Console.WriteLine("GENERATE AUDIENCE: " + _config["Jwt:Audience"]);
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
@@ -155,7 +156,8 @@ public class RatingService
 
     public async Task<bool> UpdateAsync(Guid userId, Guid ratingId, UpdateRatingRequest req)
     {
-        var existing = await _ratings.GetByUserAndMovieAsync(userId, ratingId);
+        var ratings = await _ratings.GetByUserIdAsync(userId);
+        var existing = ratings.FirstOrDefault(r => r.Id == ratingId);
         if (existing is null || existing.UserId != userId) return false;
 
         existing.Rating = req.Rating;
@@ -167,7 +169,8 @@ public class RatingService
 
     public async Task<bool> DeleteAsync(Guid userId, Guid ratingId)
     {
-        var existing = await _ratings.GetByUserAndMovieAsync(userId, ratingId);
+        var ratings = await _ratings.GetByUserIdAsync(userId);
+        var existing = ratings.FirstOrDefault(r => r.Id == ratingId);
         if (existing is null || existing.UserId != userId) return false;
 
         await _ratings.DeleteAsync(ratingId);
@@ -231,7 +234,8 @@ public class WatchListService
 
     public async Task<bool> UpdateStatusAsync(Guid userId, Guid itemId, string status)
     {
-        var item = await _watchList.GetByUserAndMovieAsync(userId, itemId);
+        var items = await _watchList.GetByUserIdAsync(userId);
+        var item = items.FirstOrDefault(i => i.Id == itemId);
         if (item is null || item.UserId != userId) return false;
 
         await _watchList.UpdateStatusAsync(itemId, status);
@@ -240,7 +244,8 @@ public class WatchListService
 
     public async Task<bool> DeleteAsync(Guid userId, Guid itemId)
     {
-        var item = await _watchList.GetByUserAndMovieAsync(userId, itemId);
+        var items = await _watchList.GetByUserIdAsync(userId);
+        var item = items.FirstOrDefault(i => i.Id == itemId);
         if (item is null || item.UserId != userId) return false;
 
         await _watchList.DeleteAsync(itemId);

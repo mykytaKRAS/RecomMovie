@@ -1,6 +1,8 @@
+using Dapper;
 using FilmRecommender.API.Endpoints;
 using FilmRecommender.API.Extensions;
-
+// Вирішує snake_case ? PascalCase для всіх Dapper запитів
+DefaultTypeMap.MatchNamesWithUnderscores = true;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
@@ -15,6 +17,15 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors();
+// логування
+/*app.Use(async (context, next) =>
+{
+    var token = context.Request.Headers["Authorization"].ToString();
+    Console.WriteLine($"RAW HEADER: '{token}'");
+    Console.WriteLine($"RAW LENGTH: {token.Length}");
+    await next();
+});*/
+
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -27,8 +27,18 @@ public class UserRepository : IUserRepository
     public async Task<User?> GetByEmailAsync(string email)
     {
         using var conn = _db.CreateConnection();
-        return await conn.QuerySingleOrDefaultAsync<User>(
-            "SELECT * FROM users WHERE email = @email", new { email });
+
+        return await conn.QuerySingleOrDefaultAsync<User>(@"
+        SELECT 
+            id AS Id,
+            email AS Email,
+            password_hash AS PasswordHash,
+            username AS Username,
+            created_at AS CreatedAt,
+            updated_at AS UpdatedAt
+        FROM users
+        WHERE email = @email",
+            new { email });
     }
 
     public async Task<Guid> CreateAsync(User user)

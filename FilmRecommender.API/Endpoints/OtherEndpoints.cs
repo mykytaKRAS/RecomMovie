@@ -120,9 +120,13 @@ public static class WatchListEndpoints
             .RequireAuthorization();
 
         group.MapGet("/", async (WatchListService svc, HttpContext ctx, string? status) =>
-            Results.Ok(await svc.GetByUserAsync(ctx.GetUserId(), status)))
-        .WithName("GetWatchList")
-        .WithSummary("Мій список перегляду. Фільтр статусу: want | watching | watched");
+        {
+            var userId = ctx.GetUserId();
+            Console.WriteLine($"WATCHLIST USER ID: {userId}");
+            Console.WriteLine($"IS AUTH: {ctx.User.Identity?.IsAuthenticated}");
+            Console.WriteLine($"CLAIMS: {string.Join(", ", ctx.User.Claims.Select(c => c.Type + "=" + c.Value))}");
+            return Results.Ok(await svc.GetByUserAsync(userId, status));
+        });
 
         group.MapPost("/", async (
             AddToWatchListRequest req, WatchListService svc, HttpContext ctx) =>
