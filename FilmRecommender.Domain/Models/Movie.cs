@@ -25,6 +25,7 @@ public class Movie
     public string? OriginalLanguage { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    public Dictionary<string, double>? FeatureVector { get; set; }
     public IEnumerable<Genre> Genres { get; set; } = [];
     public IEnumerable<Actor> Actors { get; set; } = [];
     public IEnumerable<Director> Directors { get; set; } = [];

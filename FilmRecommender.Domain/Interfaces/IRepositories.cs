@@ -70,6 +70,19 @@ public interface IWatchListRepository
     Task DeleteAsync(Guid id);
 }
 
+public interface IMovieScoringRepository
+{
+    Task<IEnumerable<Movie>> GetAllForScoringAsync(HashSet<Guid> excludeIds, int limit = 500);
+    Task UpdateFeatureVectorAsync(Guid movieId, Dictionary<string, double> vector);
+    Task<Dictionary<string, double>?> GetFeatureVectorAsync(Guid movieId);
+}
+
+public interface IUserRatingExtendedRepository
+{
+    Task<Dictionary<Guid, Dictionary<Guid, double>>> GetAllGroupedByUserAsync();
+    Task<int> CountByUserIdAsync(Guid userId);
+}
+
 public class MovieFilter
 {
     public int? GenreId { get; set; }

@@ -1,8 +1,11 @@
 using Dapper;
+using FilmRecommender.Infrastructure.Database;
 using FilmRecommender.API.Endpoints;
 using FilmRecommender.API.Extensions;
 // ¬ир≥шуЇ snake_case ? PascalCase дл€ вс≥х Dapper запит≥в
 DefaultTypeMap.MatchNamesWithUnderscores = true;
+SqlMapper.AddTypeHandler(new JsonTypeHandler<Dictionary<string, double>>());
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
@@ -36,5 +39,6 @@ app.MapGenreEndpoints();
 app.MapRatingEndpoints();
 app.MapSurveyEndpoints();
 app.MapWatchListEndpoints();
+app.MapRecommendationEndpoints();
 
 app.Run();

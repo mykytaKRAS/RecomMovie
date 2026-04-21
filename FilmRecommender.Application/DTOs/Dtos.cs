@@ -168,3 +168,18 @@ public record MyRatingDto(
     string? Review,
     DateTime RatedAt
 );
+
+// ── Recommendations ───────────────────────────────────────────
+
+public record RecommendationStatusDto(
+    int RatingCount,
+    bool CollaborativeAvailable,
+    int RatingsUntilCollaborative
+);
+
+public record RecommendationResultDto(
+    Guid RecommendationId,
+    MovieSummaryDto Movie,
+    decimal Score,
+    string Algorithm
+);

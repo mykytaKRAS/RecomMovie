@@ -2,12 +2,14 @@
 using FilmRecommender.Domain.Interfaces;
 using FilmRecommender.Infrastructure.Database;
 using FilmRecommender.Infrastructure.Repositories;
+using FilmRecommender.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
 using System.Security.Claims;
 using System.Text;
+using static FilmRecommender.Infrastructure.Repositories.MovieRepository;
 
 namespace FilmRecommender.API.Extensions;
 
@@ -116,6 +118,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRecommendationRepository, RecommendationRepository>();
         services.AddScoped<IWatchListRepository, WatchListRepository>();
 
+        services.AddScoped<IMovieScoringRepository, MovieScoringRepository>();
+        services.AddScoped<IUserRatingExtendedRepository, UserRatingExtendedRepository>();
+
         return services;
     }
 
@@ -126,6 +131,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<RatingService>();
         services.AddScoped<WatchListService>();
         services.AddScoped<SurveyService>();
+
+        services.AddScoped<ContentBasedService>();
+        services.AddScoped<CollaborativeService>();
+        services.AddScoped<HybridRecommendationService>();
+        services.AddScoped<FeatureVectorizationService>();
+        services.AddScoped<RecommendationExplainerService>();
 
         return services;
     }

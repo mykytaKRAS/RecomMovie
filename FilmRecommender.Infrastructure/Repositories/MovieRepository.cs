@@ -1,13 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using Dapper;
+﻿using Dapper;
 using FilmRecommender.Domain.Interfaces;
 using FilmRecommender.Domain.Models;
 using FilmRecommender.Infrastructure.Database;
+using Npgsql;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace FilmRecommender.Infrastructure.Repositories;
 
@@ -234,5 +235,132 @@ public class MovieRepository : IMovieRepository
             WHERE mt.movie_id = @movieId";
 
         return await conn.QueryAsync<Tag>(sql, new { movieId });
+    }
+
+    public class MovieScoringRepository : IMovieScoringRepository
+    {
+        private readonly IDbConnectionFactory _db;
+        public MovieScoringRepository(IDbConnectionFactory db) => _db = db;
+
+        public async Task<IEnumerable<Movie>> GetAllForScoringAsync(
+            HashSet<Guid> excludeIds, int limit = 500)
+        {
+            using var conn = _db.CreateConnection();
+
+            // Беремо популярні фільми виключаючи ті що юзер вже бачив
+            var sql = @"
+            SELECT 
+                id              AS Id,
+                title           AS Title,
+                release_year    AS ReleaseYear,
+                avg_rating      AS AvgRating,
+                poster_path     AS PosterPath,
+                popularity_score AS PopularityScore,
+                feature_vector  AS FeatureVectorJson
+            FROM movies
+            WHERE feature_vector IS NOT NULL
+            ORDER BY popularity_score DESC NULLS LAST
+            LIMIT @limit";
+
+            var rows = await conn.QueryAsync<MovieScoringRow>(sql, new { limit });
+
+            return rows
+                .Where(r => !excludeIds.Contains(r.Id))
+                .Select(r => new Movie
+                {
+                    Id = r.Id,
+                    Title = r.Title,
+                    ReleaseYear = r.ReleaseYear,
+                    AvgRating = r.AvgRating,
+                    PosterPath = r.PosterPath,
+                    PopularityScore = r.PopularityScore,
+                    FeatureVector = r.FeatureVectorJson != null
+                        ? JsonSerializer.Deserialize<Dictionary<string, double>>(r.FeatureVectorJson)
+                        : null
+                });
+        }
+
+        public async Task UpdateFeatureVectorAsync(Guid movieId, Dictionary<string, double> vector)
+        {
+            using var conn = (NpgsqlConnection)_db.CreateConnection();
+            await conn.OpenAsync();
+
+            using var cmd = new NpgsqlCommand(@"
+            UPDATE movies SET feature_vector = @vector::jsonb WHERE id = @id", conn);
+
+            cmd.Parameters.AddWithValue("id", movieId);
+            cmd.Parameters.AddWithValue("vector", JsonSerializer.Serialize(vector));
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        public async Task<Dictionary<string, double>?> GetFeatureVectorAsync(Guid movieId)
+        {
+            using var conn = _db.CreateConnection();
+            var json = await conn.QuerySingleOrDefaultAsync<string>(
+                "SELECT feature_vector::text FROM movies WHERE id = @movieId",
+                new { movieId });
+
+            return json is null
+                ? null
+                : JsonSerializer.Deserialize<Dictionary<string, double>>(json);
+        }
+    }
+
+    // Хелпер для маппінгу
+    internal class MovieScoringRow
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public short? ReleaseYear { get; set; }
+        public decimal? AvgRating { get; set; }
+        public string? PosterPath { get; set; }
+        public decimal? PopularityScore { get; set; }
+        public string? FeatureVectorJson { get; set; }
+    }
+
+    // ── Розширення UserRatingRepository ──────────────────────────
+
+    public class UserRatingExtendedRepository : IUserRatingExtendedRepository
+    {
+        private readonly IDbConnectionFactory _db;
+        public UserRatingExtendedRepository(IDbConnectionFactory db) => _db = db;
+
+        // Повертає словник: userId → { movieId → rating }
+        // Використовується для collaborative filtering
+        public async Task<Dictionary<Guid, Dictionary<Guid, double>>> GetAllGroupedByUserAsync()
+        {
+            using var conn = _db.CreateConnection();
+
+            var sql = @"
+            SELECT 
+                user_id  AS UserId,
+                movie_id AS MovieId,
+                rating   AS Rating
+            FROM user_ratings
+            ORDER BY user_id";
+
+            var rows = await conn.QueryAsync<RatingRow>(sql);
+
+            return rows
+                .GroupBy(r => r.UserId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.ToDictionary(r => r.MovieId, r => (double)r.Rating));
+        }
+
+        public async Task<int> CountByUserIdAsync(Guid userId)
+        {
+            using var conn = _db.CreateConnection();
+            return await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM user_ratings WHERE user_id = @userId",
+                new { userId });
+        }
+    }
+
+    internal class RatingRow
+    {
+        public Guid UserId { get; set; }
+        public Guid MovieId { get; set; }
+        public decimal Rating { get; set; }
     }
 }
