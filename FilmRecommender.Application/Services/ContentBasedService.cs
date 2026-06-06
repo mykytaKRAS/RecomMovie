@@ -1,4 +1,6 @@
-﻿using FilmRecommender.Domain.Interfaces;
+﻿// FilmRecommender.Application/Services/ContentBasedService.cs
+
+using FilmRecommender.Domain.Interfaces;
 using FilmRecommender.Domain.Models;
 
 namespace FilmRecommender.Application.Services;
@@ -22,22 +24,58 @@ public class ContentBasedService
         _watchList = watchList;
     }
 
+    // ══════════════════════════════════════════════════════════
+    // PRODUCTION метод — використовується фронтендом
+    // Читає ВСІ оцінки користувача з БД
+    // ══════════════════════════════════════════════════════════
+
     public async Task<IEnumerable<Recommendation>> GetRecommendationsAsync(
         Guid userId, int limit = 20)
     {
-        // 1. Будуємо профіль користувача
-        var userVector = await BuildUserVectorAsync(userId);
+        var userRatings = (await _ratings.GetByUserIdAsync(userId))
+            .ToDictionary(r => r.MovieId, r => (double)r.Rating);
+
+        var userVector = await BuildUserVectorAsync(userId, userRatings);
 
         if (!userVector.Any())
             return Enumerable.Empty<Recommendation>();
 
-        // 2. Збираємо id фільмів які юзер вже бачив
-        var seenIds = await GetSeenMovieIdsAsync(userId);
+        var seenIds = await GetSeenIdsAsync(userId);
+        return await ScoreAndRankAsync(userId, userVector, seenIds, limit);
+    }
 
-        // 3. Отримуємо кандидатів для scoring
-        var candidates = await _scoring.GetAllForScoringAsync(seenIds, limit: 1000);
+    // ══════════════════════════════════════════════════════════
+    // EVALUATION метод — використовується тільки EvaluationService
+    // Отримує trainRatings ззовні — не читає з БД
+    // Отримує excludeIds ззовні — включаючи test set
+    // ══════════════════════════════════════════════════════════
 
-        // 4. Рахуємо косинусну подібність і сортуємо
+    public async Task<IEnumerable<Recommendation>> GetRecommendationsForEvalAsync(
+        Guid userId,
+        Dictionary<Guid, double> trainRatings,
+        HashSet<Guid> excludeIds,
+        int limit = 20)
+    {
+        var userVector = await BuildUserVectorAsync(userId, trainRatings);
+
+        if (!userVector.Any())
+            return Enumerable.Empty<Recommendation>();
+
+        return await ScoreAndRankAsync(userId, userVector, excludeIds, limit);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // SHARED — спільна логіка для обох методів
+    // ══════════════════════════════════════════════════════════
+
+    private async Task<IEnumerable<Recommendation>> ScoreAndRankAsync(
+        Guid userId,
+        Dictionary<string, double> userVector,
+        HashSet<Guid> excludeIds,
+        int limit)
+    {
+        var candidates = await _scoring.GetAllForScoringAsync(excludeIds, 1000);
+
         var scored = candidates
             .Where(m => m.FeatureVector != null)
             .Select(m => new
@@ -45,7 +83,7 @@ public class ContentBasedService
                 Movie = m,
                 Score = CosineSimilarity(userVector, m.FeatureVector!)
             })
-            .Where(x => x.Score > 0.1) // мінімальний поріг релевантності
+            .Where(x => x.Score > 0.1)
             .OrderByDescending(x => x.Score)
             .Take(limit)
             .ToList();
@@ -62,55 +100,57 @@ public class ContentBasedService
         });
     }
 
-    // ── Будуємо вектор профілю користувача ───────────────────
-
-    private async Task<Dictionary<string, double>> BuildUserVectorAsync(Guid userId)
+    private async Task<Dictionary<string, double>> BuildUserVectorAsync(
+    Guid userId,
+    Dictionary<Guid, double> ratings)
     {
         var vector = new Dictionary<string, double>();
 
-        // З опитувальника (вага 40%)
+        // 1. Дані з опитувальника (вага 40%)
         var survey = await _survey.GetByUserIdAsync(userId);
         if (survey != null)
         {
             foreach (var (key, val) in survey.PreferenceVector)
             {
-                // Ключі в опитувальнику — це genreId, конвертуємо у genre_name
-                vector[$"survey_{key}"] = (double)val * 0.4;
+                // ВАЖЛИВО: Прибрано префікс $"survey_{key}". 
+                // Тепер ключі збігаються з ключами у векторах фільмів.
+                vector[key] = (double)val * 0.4;
             }
         }
 
-        // З оцінок фільмів (вага 60%) — тільки фільми з оцінкою 6+
-        var ratings = (await _ratings.GetByUserIdAsync(userId))
-            .Where(r => r.Rating >= 6)
-            .ToList();
-
-        foreach (var rating in ratings)
+        // 2. Дані з оцінок (вага 60%) — БЕРЕМО ВСІ оцінки, а не тільки >= 6
+        foreach (var (movieId, rating) in ratings)
         {
-            var movieVector = await _scoring.GetFeatureVectorAsync(rating.MovieId);
+            var movieVector = await _scoring.GetFeatureVectorAsync(movieId);
             if (movieVector is null) continue;
 
-            var weight = (double)rating.Rating / 10.0 * 0.6;
+            // Трансформуємо оцінку (1..10) у відхилення від нейтральної 5.5
+            // Оцінка 10 -> вага +1.0 (максимальний позитив)
+            // Оцінка 5.5 -> вага 0 (нейтрально)
+            // Оцінка 1 -> вага -1.0 (максимальний негатив)
+            var weight = ((rating - 5.5) / 4.5) * 0.6;
 
             foreach (var (key, val) in movieVector)
             {
-                vector[key] = vector.GetValueOrDefault(key) + val * weight;
+                // Якщо користувач поставив низьку оцінку, weight буде від'ємним,
+                // і ця характеристика "мінусуватиметься" з його профілю.
+                vector[key] = vector.GetValueOrDefault(key) + (val * weight);
             }
         }
 
         return Normalize(vector);
     }
 
-    private async Task<HashSet<Guid>> GetSeenMovieIdsAsync(Guid userId)
+    private async Task<HashSet<Guid>> GetSeenIdsAsync(Guid userId)
     {
         var rated = await _ratings.GetByUserIdAsync(userId);
         var watchList = await _watchList.GetByUserIdAsync(userId);
 
-        var ids = rated.Select(r => r.MovieId)
+        return rated.Select(r => r.MovieId)
             .Union(watchList
                 .Where(w => w.Status == "watched")
-                .Select(w => w.MovieId));
-
-        return ids.ToHashSet();
+                .Select(w => w.MovieId))
+            .ToHashSet();
     }
 
     private static double CosineSimilarity(

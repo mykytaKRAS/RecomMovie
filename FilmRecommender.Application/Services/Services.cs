@@ -259,18 +259,39 @@ public class SurveyService
 {
     private readonly ISurveyRepository _survey;
     private readonly IUserPreferenceRepository _prefs;
+    private readonly IGenreRepository _genres;
 
-    public SurveyService(ISurveyRepository survey, IUserPreferenceRepository prefs)
+    public SurveyService(
+        ISurveyRepository survey,
+        IUserPreferenceRepository prefs,
+        IGenreRepository genres)
     {
         _survey = survey;
         _prefs = prefs;
+        _genres = genres;
     }
 
     public async Task SubmitAsync(Guid userId, SubmitSurveyRequest req)
     {
-        // Будуємо вектор вподобань з відповідей
-        var vector = req.GenreWeights
-            .ToDictionary(kv => kv.Key.ToString(), kv => kv.Value);
+        // Завантажуємо назви жанрів для конвертації id → назву
+        var allGenres = (await _genres.GetAllAsync())
+            .ToDictionary(g => g.Id, g => g.Name);
+
+        // Фільтруємо тільки реальні genre_id (від'ємні — мова/ера — пропускаємо)
+        var validGenreWeights = req.GenreWeights
+            .Where(kv => kv.Key > 0 && allGenres.ContainsKey(kv.Key))
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+        // Будуємо вектор з назвами жанрів як ключами
+        // Так вектор профілю буде сумісний з feature_vector фільмів
+        var vector = validGenreWeights.ToDictionary(
+            kv =>
+            {
+                var name = allGenres[kv.Key];
+                return $"genre_{name.ToLower().Replace(" ", "_")}";
+            },
+            kv => kv.Value
+        );
 
         var existing = await _survey.GetByUserIdAsync(userId);
 
@@ -289,10 +310,10 @@ public class SurveyService
             await _survey.UpdateAsync(existing);
         }
 
-        // Зберігаємо ваги жанрів окремо для швидкого доступу в фільтрації
+        // Зберігаємо ваги жанрів окремо — тільки валідні genre_id
         await _prefs.DeleteByUserIdAsync(userId);
 
-        foreach (var (genreId, weight) in req.GenreWeights)
+        foreach (var (genreId, weight) in validGenreWeights)
         {
             await _prefs.UpsertAsync(new UserPreference
             {

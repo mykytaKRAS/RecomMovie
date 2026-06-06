@@ -137,6 +137,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<HybridRecommendationService>();
         services.AddScoped<FeatureVectorizationService>();
         services.AddScoped<RecommendationExplainerService>();
+        services.AddScoped<EvaluationService>();
+        services.AddScoped<SurveyService>();
 
         return services;
     }

@@ -40,5 +40,6 @@ app.MapRatingEndpoints();
 app.MapSurveyEndpoints();
 app.MapWatchListEndpoints();
 app.MapRecommendationEndpoints();
+app.MapEvaluationEndpoints();
 
 app.Run();
