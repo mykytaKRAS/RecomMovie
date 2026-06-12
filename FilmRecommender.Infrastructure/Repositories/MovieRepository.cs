@@ -91,7 +91,7 @@ public class MovieRepository : IMovieRepository
         return movie;
     }
 
-    public async Task<IEnumerable<Movie>> SearchAsync(string query, int page, int pageSize)
+    /*public async Task<IEnumerable<Movie>> SearchAsync(string query, int page, int pageSize)
     {
         using var conn = _db.CreateConnection();
 
@@ -108,7 +108,7 @@ public class MovieRepository : IMovieRepository
             PageSize = pageSize,
             Offset = (page - 1) * pageSize
         });
-    }
+    }*/
 
     public async Task<IEnumerable<Movie>> GetByGenreAsync(int genreId, int page, int pageSize)
     {
@@ -137,6 +137,12 @@ public class MovieRepository : IMovieRepository
         var conditions = new List<string>();
         var p = new DynamicParameters();
 
+ 
+        if (!string.IsNullOrWhiteSpace(filter.SearchQuery))
+        {
+            conditions.Add("(m.title ILIKE @SearchQuery OR m.original_title ILIKE @SearchQuery)");
+            p.Add("SearchQuery", $"%{filter.SearchQuery}%");
+        }
         if (filter.GenreId.HasValue)
         {
             conditions.Add("mg.genre_id = @GenreId");

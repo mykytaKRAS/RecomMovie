@@ -43,19 +43,43 @@ public static class MovieEndpoints
         .WithSummary("Список фільмів з фільтрами та пагінацією");
 
         group.MapGet("/search", async (
-            string q, IMovieRepository repo, int page = 1, int pageSize = 20) =>
+    string q, // Оставляем обязательный параметр q
+    IMovieRepository repo,
+    int? genreId, short? yearFrom, short? yearTo,
+    decimal? minRating, string? language, string? sortBy,
+    int page = 1, int pageSize = 20) =>
         {
             if (string.IsNullOrWhiteSpace(q))
                 return Results.BadRequest(new ErrorResponse("Параметр пошуку не може бути порожнім"));
 
-            var items = await repo.SearchAsync(q, page, pageSize);
-            var dtos = items.Select(m => new MovieSummaryDto(
-                m.Id, m.Title, m.ReleaseYear, m.AvgRating, m.PosterPath, []));
+            // Создаем фильтр, передавая туда q
+            var filter = new MovieFilter
+            {
+                SearchQuery = q,
+                GenreId = genreId,
+                YearFrom = yearFrom,
+                YearTo = yearTo,
+                MinRating = minRating,
+                Language = language,
+                SortBy = sortBy
+            };
 
-            return Results.Ok(dtos);
+            pageSize = Math.Clamp(pageSize, 1, 50);
+
+            // Используем универсальный метод GetAllAsync!
+            var items = await repo.GetAllAsync(filter, page, pageSize);
+            var total = await repo.CountAsync(filter);
+
+            // Маппим результаты (добавил жанры, которых раньше не было в поиске)
+            var dtos = items.Select(m => new MovieSummaryDto(
+                m.Id, m.Title, m.ReleaseYear, m.AvgRating, m.PosterPath,
+                m.Genres.Select(g => g.Name)));
+
+            // Возвращаем PagedResult, чтобы пагинация работала как в основном каталоге
+            return Results.Ok(new PagedResult<MovieSummaryDto>(dtos, total, page, pageSize));
         })
         .WithName("SearchMovies")
-        .WithSummary("Пошук фільмів за назвою");
+        .WithSummary("Пошук фільмів за назвою із застосуванням фільтрів та сортування");
 
         group.MapGet("/{id:guid}", async (
             Guid id, IMovieRepository repo,
