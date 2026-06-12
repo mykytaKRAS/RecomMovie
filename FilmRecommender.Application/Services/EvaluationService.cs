@@ -26,8 +26,8 @@ public class EvaluationService
     private readonly CollaborativeService _collaborative;
 
     private const double RelevanceThreshold = 7.0;
-    private const double TestSplitRatio = 0.2;
-    private const int MinRatingsForTest = 20;
+    private const double TestSplitRatio = 0.4;
+    private const int MinRatingsForTest = 50;
     private const int K = 10;
 
     public EvaluationService(

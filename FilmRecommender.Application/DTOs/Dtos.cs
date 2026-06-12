@@ -99,14 +99,20 @@ public record SurveyQuestionDto(
     int GenreId,
     string GenreName
 );
-
+/*
 public record SubmitSurveyRequest(
     // GenreId → оцінка від 0 до 1
     Dictionary<int, decimal> GenreWeights,
     // Улюблені фільми (до 5)
     List<Guid> FavoriteMovieIds
 );
-
+*/
+public record SubmitSurveyRequest(
+    Dictionary<int, decimal> GenreWeights,
+    List<Guid> FavoriteMovieIds,
+    // Додаткові ваги для не-жанрових ознак (мова, декада)
+    Dictionary<string, decimal>? ExtraWeights = null
+);
 public record SurveyResponseDto(
     Guid Id,
     DateTime CompletedAt,

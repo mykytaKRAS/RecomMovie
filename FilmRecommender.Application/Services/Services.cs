@@ -255,7 +255,7 @@ public class WatchListService
 
 // ── SurveyService ─────────────────────────────────────────────
 
-public class SurveyService
+/*public class SurveyService
 {
     private readonly ISurveyRepository _survey;
     private readonly IUserPreferenceRepository _prefs;
@@ -311,6 +311,87 @@ public class SurveyService
         }
 
         // Зберігаємо ваги жанрів окремо — тільки валідні genre_id
+        await _prefs.DeleteByUserIdAsync(userId);
+
+        foreach (var (genreId, weight) in validGenreWeights)
+        {
+            await _prefs.UpsertAsync(new UserPreference
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                GenreId = genreId,
+                Weight = weight,
+            });
+        }
+    }
+}*/
+public class SurveyService
+{
+    private readonly ISurveyRepository _survey;
+    private readonly IUserPreferenceRepository _prefs;
+    private readonly IGenreRepository _genres;
+
+    public SurveyService(
+        ISurveyRepository survey,
+        IUserPreferenceRepository prefs,
+        IGenreRepository genres)
+    {
+        _survey = survey;
+        _prefs = prefs;
+        _genres = genres;
+    }
+
+    public async Task SubmitAsync(Guid userId, SubmitSurveyRequest req)
+    {
+        // 1. Завантажуємо назви жанрів
+        var allGenres = (await _genres.GetAllAsync())
+            .ToDictionary(g => g.Id, g => g.Name);
+
+        // 2. Фільтруємо тільки валідні genre_id
+        var validGenreWeights = req.GenreWeights
+            .Where(kv => kv.Key > 0 && allGenres.ContainsKey(kv.Key))
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+        // 3. Будуємо вектор з назвами жанрів як ключами
+        // Крок 3 — змінити тип вектора на decimal
+        var vector = validGenreWeights.ToDictionary(
+            kv =>
+            {
+                var name = allGenres[kv.Key];
+                return $"genre_{name.ToLower().Replace(" ", "_")}";
+            },
+            kv => (decimal)kv.Value  // ← decimal замість double
+        );
+
+        // Крок 4 — extra ваги теж decimal
+        if (req.ExtraWeights != null)
+        {
+            foreach (var (key, val) in req.ExtraWeights)
+            {
+                if (key.StartsWith("lang_") || key.StartsWith("decade_"))
+                    vector[key] = (decimal)val;  // ← decimal
+            }
+        }
+
+        // 5. Зберігаємо вектор
+        var existing = await _survey.GetByUserIdAsync(userId);
+
+        if (existing is null)
+        {
+            await _survey.CreateAsync(new SurveyResponse
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                PreferenceVector = vector,
+            });
+        }
+        else
+        {
+            existing.PreferenceVector = vector;
+            await _survey.UpdateAsync(existing);
+        }
+
+        // 6. Зберігаємо жанрові ваги у user_preferences
         await _prefs.DeleteByUserIdAsync(userId);
 
         foreach (var (genreId, weight) in validGenreWeights)
