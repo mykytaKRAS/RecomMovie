@@ -43,7 +43,7 @@ public static class MovieEndpoints
         .WithSummary("Список фільмів з фільтрами та пагінацією");
 
         group.MapGet("/search", async (
-    string q, // Оставляем обязательный параметр q
+    string q,
     IMovieRepository repo,
     int? genreId, short? yearFrom, short? yearTo,
     decimal? minRating, string? language, string? sortBy,
@@ -52,7 +52,6 @@ public static class MovieEndpoints
             if (string.IsNullOrWhiteSpace(q))
                 return Results.BadRequest(new ErrorResponse("Параметр пошуку не може бути порожнім"));
 
-            // Создаем фильтр, передавая туда q
             var filter = new MovieFilter
             {
                 SearchQuery = q,
@@ -66,16 +65,13 @@ public static class MovieEndpoints
 
             pageSize = Math.Clamp(pageSize, 1, 50);
 
-            // Используем универсальный метод GetAllAsync!
             var items = await repo.GetAllAsync(filter, page, pageSize);
             var total = await repo.CountAsync(filter);
 
-            // Маппим результаты (добавил жанры, которых раньше не было в поиске)
             var dtos = items.Select(m => new MovieSummaryDto(
                 m.Id, m.Title, m.ReleaseYear, m.AvgRating, m.PosterPath,
                 m.Genres.Select(g => g.Name)));
 
-            // Возвращаем PagedResult, чтобы пагинация работала как в основном каталоге
             return Results.Ok(new PagedResult<MovieSummaryDto>(dtos, total, page, pageSize));
         })
         .WithName("SearchMovies")

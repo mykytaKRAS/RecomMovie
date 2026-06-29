@@ -75,7 +75,7 @@ public record CollaborativeLog(
     List<PredictedScoreStep> FinalRecommendations
 );
 
-// ── Сервіс ────────────────────────────────────────────────────
+// Сервіс
 
 public class RecommendationExplainerService
 {
@@ -105,19 +105,16 @@ public class RecommendationExplainerService
         _genres = genres;
     }
 
-    // ══════════════════════════════════════════════════════════
     // CONTENT-BASED LOG
-    // ══════════════════════════════════════════════════════════
 
     public async Task<ContentBasedLog> ExplainContentBasedAsync(Guid userId)
     {
-        // ── внесок опитувальника ─────────────────────
+        // внесок опитувальника
         var surveyContribution = new List<VectorEntry>();
         var survey = await _survey.GetByUserIdAsync(userId);
 
         if (survey != null)
         {
-            // Завантажуємо всі жанри для маппінгу id → name
             var allGenres = (await _genres.GetAllAsync())
                 .ToDictionary(g => g.Id.ToString(), g => g.Name);
 
@@ -126,7 +123,6 @@ public class RecommendationExplainerService
                 var weighted = (double)val * 0.4;
                 if (weighted > 0)
                 {
-                    // Замінюємо числовий id на назву жанру
                     var label = allGenres.TryGetValue(key, out var name)
                         ? $"genre_{name.ToLower().Replace(" ", "_")}"
                         : $"survey_{key}";
@@ -136,10 +132,10 @@ public class RecommendationExplainerService
             }
         }
 
-        // ── внесок оцінок ─────────────────────────────
+        // внесок оцінок
         var ratingsContribution = new List<VectorEntry>();
         var userRatings = (await _ratings.GetByUserIdAsync(userId))
-            .Where(r => r.Rating >= 6)
+            //.Where(r => r.Rating >= 6)
             .ToList();
 
         var accumulated = new Dictionary<string, double>();
@@ -150,6 +146,7 @@ public class RecommendationExplainerService
             if (movieVector is null) continue;
 
             var weight = (double)rating.Rating / 10.0 * 0.6;
+            //var weight = ((double)rating.Rating - 5.5) / 4.5 * 0.6;
 
             foreach (var (key, val) in movieVector)
             {
@@ -160,7 +157,7 @@ public class RecommendationExplainerService
         foreach (var (key, val) in accumulated.OrderByDescending(x => x.Value).Take(15))
             ratingsContribution.Add(new VectorEntry(key, Math.Round(val, 4)));
 
-        // ── фінальний вектор користувача ─────────────
+        //  фінальний вектор користувача 
         var rawVector = new Dictionary<string, double>();
 
         if (survey != null)
@@ -182,7 +179,7 @@ public class RecommendationExplainerService
             .Select(x => new VectorEntry(x.Key, x.Value))
             .ToList();
 
-        // ── розрахунок схожості з кандидатами ────────
+        //  розрахунок схожості з кандидатами 
         var seenIds = await GetSeenIdsAsync(userId);
         var candidates = (await _scoring.GetAllForScoringAsync(seenIds, 200)).ToList();
 
@@ -236,7 +233,7 @@ public class RecommendationExplainerService
 
         var allRatings = await _ratingsExt.GetAllGroupedByUserAsync();
 
-        // ── розрахунок Pearson для кожного юзера ─────
+        // розрахунок Pearson для кожного юзера 
         var userSimilarities = new List<UserSimilarityStep>();
 
         foreach (var (otherUserId, otherRatings) in allRatings.Where(x => x.Key != userId))
@@ -296,8 +293,7 @@ public class RecommendationExplainerService
             .Take(5)
             .ToList();
 
-        // ── передбачення score для нових фільмів ─────
-       //var seenIds = myRatings.Keys.ToHashSet();
+        // передбачення score для нових фільмів 
         var seenIds = await GetSeenIdsAsync(userId);
         var numerators = new Dictionary<Guid, double>();
         var denominators = new Dictionary<Guid, double>();
@@ -354,7 +350,7 @@ public class RecommendationExplainerService
         );
     }
 
-    // ── Хелпери ───────────────────────────────────────────────
+    // Хелпери
 
     private async Task<HashSet<Guid>> GetSeenIdsAsync(Guid userId)
     {

@@ -1,6 +1,4 @@
-﻿// FilmRecommender.Application/Services/EvaluationService.cs
-
-using FilmRecommender.Domain.Interfaces;
+﻿using FilmRecommender.Domain.Interfaces;
 
 namespace FilmRecommender.Application.Services;
 
@@ -76,7 +74,6 @@ public class EvaluationService
                 .Where(r => !testMovieIds.Contains(r.Key))
                 .ToDictionary(r => r.Key, r => r.Value);
 
-            // Exclude тільки train — test лишаємо як кандидати
             var excludeIds = trainRatings.Keys.ToHashSet();
 
             var recs = await _contentBased.GetRecommendationsForEvalAsync(
@@ -142,19 +139,16 @@ public class EvaluationService
 
             if (trainRatings.Count < 10) continue;
 
-            // У allRatings замінюємо поточного юзера на train
             var allRatingsForEval = allRatings
                 .ToDictionary(
                     kv => kv.Key,
                     kv => kv.Key == userId ? trainRatings : kv.Value);
 
-            // Exclude тільки train — test лишаємо як кандидати
             var excludeOnlyTrain = trainRatings.Keys.ToHashSet();
 
             var recs = _collaborative.GetRecommendationsForEval(
                 userId, trainRatings, allRatingsForEval, excludeOnlyTrain, 5000);
 
-            // Денормалізуємо score назад у 1-10
             var recDict = recs.ToDictionary(
                 r => r.MovieId,
                 r => (double)r.Score * 10.0);

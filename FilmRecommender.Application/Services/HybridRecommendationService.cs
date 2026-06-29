@@ -35,7 +35,7 @@ public class HybridRecommendationService
         var selected = algorithm switch
         {
             "collaborative" when canCollaborative => "collaborative",
-            "collaborative" when !canCollaborative => "content_based", // fallback
+            "collaborative" when !canCollaborative => "content_based",
             "content_based" => "content_based",
             _ => "content_based"
         };
@@ -46,27 +46,7 @@ public class HybridRecommendationService
         {
             results = await _collaborative.GetRecommendationsAsync(userId, limit);
 
-            // Якщо collaborative дало мало результатів — доповнюємо content-based
-            var resultList = results.ToList();
-            /*if (resultList.Count < limit / 2)
-            {
-                var contentResults = await _contentBased
-                    .GetRecommendationsAsync(userId, limit - resultList.Count);
-
-                var existingMovieIds = resultList.Select(r => r.MovieId).ToHashSet();
-                var additional = contentResults
-                    .Where(r => !existingMovieIds.Contains(r.MovieId))
-                    .ToList();
-
-                resultList.AddRange(additional);
-                results = resultList;
-                selected = "hybrid";
-            }
-            else
-            {
-                results = resultList;
-            }*/
-
+            var resultList = results.ToList();          
             results = resultList;
         }
         else
@@ -76,7 +56,6 @@ public class HybridRecommendationService
 
         var resultsFinal = results.ToList();
 
-        // Зберігаємо в БД (очищаємо старі і записуємо нові)
         await _recommendations.DeleteByUserIdAsync(userId);
         if (resultsFinal.Any())
             await _recommendations.SaveManyAsync(resultsFinal);

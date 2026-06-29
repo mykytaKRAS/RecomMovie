@@ -1,6 +1,4 @@
-﻿// FilmRecommender.Application/Services/CollaborativeService.cs
-
-using FilmRecommender.Domain.Interfaces;
+﻿using FilmRecommender.Domain.Interfaces;
 using FilmRecommender.Domain.Models;
 
 namespace FilmRecommender.Application.Services;
@@ -26,9 +24,7 @@ public class CollaborativeService
         _watchList = watchList;
     }
 
-    // ══════════════════════════════════════════════════════════
-    // PRODUCTION метод — використовується фронтендом
-    // ══════════════════════════════════════════════════════════
+    // PRODUCTION метод
 
     public async Task<IEnumerable<Recommendation>> GetRecommendationsAsync(
         Guid userId, int limit = 20)
@@ -49,13 +45,7 @@ public class CollaborativeService
         return ComputeRecommendations(userId, myRatings, allRatings, seenIds, limit);
     }
 
-    // ══════════════════════════════════════════════════════════
-    // EVALUATION метод — використовується тільки EvaluationService
-    // trainRatings і allRatings передаються ззовні
-    // excludeIds включає і train і test → кандидати лише нові фільми
-    // Повертає predicted scores для ВСІХ фільмів (не тільки топ)
-    // щоб EvaluationService міг знайти test фільми у результатах
-    // ══════════════════════════════════════════════════════════
+    // EVALUATION метод
 
     public IEnumerable<Recommendation> GetRecommendationsForEval(
         Guid userId,
@@ -67,14 +57,11 @@ public class CollaborativeService
         if (trainRatings.Count < 5)
             return Enumerable.Empty<Recommendation>();
 
-        // Для eval виключаємо тільки train — test залишаємо як кандидати
         return ComputeRecommendations(
             userId, trainRatings, allRatings, excludeOnlyTrainIds, limit);
     }
 
-    // ══════════════════════════════════════════════════════════
-    // SHARED — спільна логіка
-    // ══════════════════════════════════════════════════════════
+    // SHARED логіка
 
     private IEnumerable<Recommendation> ComputeRecommendations(
     Guid userId,
@@ -83,7 +70,7 @@ public class CollaborativeService
     HashSet<Guid> excludeIds,
     int limit)
     {
-        // 1. Рахуємо середню оцінку цільового користувача (щоб потім додати відхилення)
+        // Рахуємо середню оцінку цільового користувача 
         var myAvgRating = myRatings.Values.Any() ? myRatings.Values.Average() : 0;
 
         // Знаходимо схожих користувачів через Pearson
@@ -94,7 +81,7 @@ public class CollaborativeService
                 UserId = kv.Key,
                 Ratings = kv.Value,
                 Similarity = PearsonCorrelation(myRatings, kv.Value),
-                // Одразу рахуємо середню оцінку для кожного сусіда
+                // Рахуємо середню оцінку для кожного сусіда
                 AvgRating = kv.Value.Values.Average()
             })
             .Where(x => x.Similarity > MinSimilarity)
@@ -114,7 +101,7 @@ public class CollaborativeService
             {
                 if (excludeIds.Contains(movieId)) continue;
 
-                // 2. Рахуємо ВІДХИЛЕННЯ від середнього замість самої оцінки
+                // Рахуємо ВІДХИЛЕННЯ від середнього
                 var deviation = rating - similar.AvgRating;
 
                 numerators[movieId] = numerators.GetValueOrDefault(movieId)
@@ -129,13 +116,11 @@ public class CollaborativeService
             .Where(kv => denominators.ContainsKey(kv.Key) && denominators[kv.Key] > 0)
             .Select(kv =>
             {
-                // 3. Зважене відхилення
+                // Зважене відхилення
                 var weightedDeviation = kv.Value / denominators[kv.Key];
 
-                // 4. Фінальний прогноз: Середня оцінка цільового користувача + відхилення
+                // Середня оцінка цільового користувача + відхилення
                 var rawScore = myAvgRating + weightedDeviation;
-
-                // 5. Захист від аномалій: обмежуємо оцінку в межах 1..10
                 rawScore = Math.Max(1.0, Math.Min(10.0, rawScore));
 
                 var normalizedScore = rawScore / 10.0;

@@ -91,25 +91,6 @@ public class MovieRepository : IMovieRepository
         return movie;
     }
 
-    /*public async Task<IEnumerable<Movie>> SearchAsync(string query, int page, int pageSize)
-    {
-        using var conn = _db.CreateConnection();
-
-        var sql = @"
-            SELECT m.id, m.title, m.release_year, m.avg_rating, m.poster_path
-            FROM movies m
-            WHERE m.title ILIKE @query OR m.original_title ILIKE @query
-            ORDER BY m.popularity_score DESC NULLS LAST
-            LIMIT @PageSize OFFSET @Offset";
-
-        return await conn.QueryAsync<Movie>(sql, new
-        {
-            query = $"%{query}%",
-            PageSize = pageSize,
-            Offset = (page - 1) * pageSize
-        });
-    }*/
-
     public async Task<IEnumerable<Movie>> GetByGenreAsync(int genreId, int page, int pageSize)
     {
         using var conn = _db.CreateConnection();
@@ -129,8 +110,6 @@ public class MovieRepository : IMovieRepository
             Offset = (page - 1) * pageSize
         });
     }
-
-    // ── Приватні хелпери ─────────────────────────────
 
     private static (string where, DynamicParameters parameters) BuildWhereClause(MovieFilter filter)
     {
@@ -253,7 +232,6 @@ public class MovieRepository : IMovieRepository
         {
             using var conn = _db.CreateConnection();
 
-            // Беремо популярні фільми виключаючи ті що юзер вже бачив
             var sql = @"
             SELECT 
                 id              AS Id,
@@ -324,15 +302,10 @@ public class MovieRepository : IMovieRepository
         public string? FeatureVectorJson { get; set; }
     }
 
-    // ── Розширення UserRatingRepository ──────────────────────────
-
     public class UserRatingExtendedRepository : IUserRatingExtendedRepository
     {
         private readonly IDbConnectionFactory _db;
         public UserRatingExtendedRepository(IDbConnectionFactory db) => _db = db;
-
-        // Повертає словник: userId → { movieId → rating }
-        // Використовується для collaborative filtering
         public async Task<Dictionary<Guid, Dictionary<Guid, double>>> GetAllGroupedByUserAsync()
         {
             using var conn = _db.CreateConnection();

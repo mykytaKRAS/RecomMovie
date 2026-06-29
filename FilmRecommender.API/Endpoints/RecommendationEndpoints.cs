@@ -69,7 +69,7 @@ public static class RecommendationEndpoints
         .WithSummary("Отримати персональні рекомендації фільмів");
 
         // POST /api/recommendations/vectorize
-        // Запускає векторизацію всіх фільмів (адмін endpoint)
+        // Запускає векторизацію всіх фільмів
         group.MapPost("/vectorize", async (
             FeatureVectorizationService vectorizer) =>
         {
@@ -77,7 +77,7 @@ public static class RecommendationEndpoints
             return Results.Ok(new SuccessResponse("Векторизацію завершено"));
         })
         .WithName("VectorizeMovies")
-        .WithSummary("Запустити векторизацію фільмів (одноразово після імпорту)");
+        .WithSummary("Запустити векторизацію фільмів");
 
         // GET /api/recommendations/explain/content
         group.MapGet("/explain/content", async (

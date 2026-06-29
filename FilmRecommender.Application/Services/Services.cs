@@ -14,7 +14,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace FilmRecommender.Application.Services;
 
-// ── AuthService ───────────────────────────────────────────────
+// AuthService
 
 public class AuthService
 {
@@ -79,7 +79,7 @@ public class AuthService
     }
 }
 
-// ── MovieService ──────────────────────────────────────────────
+// MovieService
 
 public class MovieService
 {
@@ -102,7 +102,7 @@ public class MovieService
             m.Genres.Select(g => g.Name));
 }
 
-// ── RatingService ─────────────────────────────────────────────
+// RatingService
 
 public class RatingService
 {
@@ -115,7 +115,6 @@ public class RatingService
         _movies = movies;
     }
 
-    // Список моїх оцінок з інформацією про фільм
     public async Task<IEnumerable<MyRatingDto>> GetMyRatingsAsync(Guid userId)
     {
         var ratings = await _ratings.GetByUserIdAsync(userId);
@@ -178,7 +177,7 @@ public class RatingService
     }
 }
 
-// ── WatchListService ──────────────────────────────────────────
+// WatchListService
 
 public class WatchListService
 {
@@ -253,78 +252,7 @@ public class WatchListService
     }
 }
 
-// ── SurveyService ─────────────────────────────────────────────
-
-/*public class SurveyService
-{
-    private readonly ISurveyRepository _survey;
-    private readonly IUserPreferenceRepository _prefs;
-    private readonly IGenreRepository _genres;
-
-    public SurveyService(
-        ISurveyRepository survey,
-        IUserPreferenceRepository prefs,
-        IGenreRepository genres)
-    {
-        _survey = survey;
-        _prefs = prefs;
-        _genres = genres;
-    }
-
-    public async Task SubmitAsync(Guid userId, SubmitSurveyRequest req)
-    {
-        // Завантажуємо назви жанрів для конвертації id → назву
-        var allGenres = (await _genres.GetAllAsync())
-            .ToDictionary(g => g.Id, g => g.Name);
-
-        // Фільтруємо тільки реальні genre_id (від'ємні — мова/ера — пропускаємо)
-        var validGenreWeights = req.GenreWeights
-            .Where(kv => kv.Key > 0 && allGenres.ContainsKey(kv.Key))
-            .ToDictionary(kv => kv.Key, kv => kv.Value);
-
-        // Будуємо вектор з назвами жанрів як ключами
-        // Так вектор профілю буде сумісний з feature_vector фільмів
-        var vector = validGenreWeights.ToDictionary(
-            kv =>
-            {
-                var name = allGenres[kv.Key];
-                return $"genre_{name.ToLower().Replace(" ", "_")}";
-            },
-            kv => kv.Value
-        );
-
-        var existing = await _survey.GetByUserIdAsync(userId);
-
-        if (existing is null)
-        {
-            await _survey.CreateAsync(new SurveyResponse
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                PreferenceVector = vector,
-            });
-        }
-        else
-        {
-            existing.PreferenceVector = vector;
-            await _survey.UpdateAsync(existing);
-        }
-
-        // Зберігаємо ваги жанрів окремо — тільки валідні genre_id
-        await _prefs.DeleteByUserIdAsync(userId);
-
-        foreach (var (genreId, weight) in validGenreWeights)
-        {
-            await _prefs.UpsertAsync(new UserPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GenreId = genreId,
-                Weight = weight,
-            });
-        }
-    }
-}*/
+// SurveyService
 public class SurveyService
 {
     private readonly ISurveyRepository _survey;
@@ -343,37 +271,31 @@ public class SurveyService
 
     public async Task SubmitAsync(Guid userId, SubmitSurveyRequest req)
     {
-        // 1. Завантажуємо назви жанрів
         var allGenres = (await _genres.GetAllAsync())
             .ToDictionary(g => g.Id, g => g.Name);
 
-        // 2. Фільтруємо тільки валідні genre_id
         var validGenreWeights = req.GenreWeights
             .Where(kv => kv.Key > 0 && allGenres.ContainsKey(kv.Key))
             .ToDictionary(kv => kv.Key, kv => kv.Value);
 
-        // 3. Будуємо вектор з назвами жанрів як ключами
-        // Крок 3 — змінити тип вектора на decimal
         var vector = validGenreWeights.ToDictionary(
             kv =>
             {
                 var name = allGenres[kv.Key];
                 return $"genre_{name.ToLower().Replace(" ", "_")}";
             },
-            kv => (decimal)kv.Value  // ← decimal замість double
+            kv => (decimal)kv.Value
         );
 
-        // Крок 4 — extra ваги теж decimal
         if (req.ExtraWeights != null)
         {
             foreach (var (key, val) in req.ExtraWeights)
             {
                 if (key.StartsWith("lang_") || key.StartsWith("decade_"))
-                    vector[key] = (decimal)val;  // ← decimal
+                    vector[key] = (decimal)val;
             }
         }
 
-        // 5. Зберігаємо вектор
         var existing = await _survey.GetByUserIdAsync(userId);
 
         if (existing is null)
@@ -391,7 +313,6 @@ public class SurveyService
             await _survey.UpdateAsync(existing);
         }
 
-        // 6. Зберігаємо жанрові ваги у user_preferences
         await _prefs.DeleteByUserIdAsync(userId);
 
         foreach (var (genreId, weight) in validGenreWeights)

@@ -22,25 +22,6 @@ public static class UserEndpoints
         .WithName("GetMe")
         .WithSummary("Профіль поточного користувача");
 
-        //test
-        /*group.MapGet("/test-auth", (HttpContext ctx) =>
-        {
-            return Results.Ok(new
-            {
-                isAuth = ctx.User.Identity?.IsAuthenticated,
-                claims = ctx.User.Claims.Select(c => new { c.Type, c.Value })
-            });
-        }).RequireAuthorization();
-
-
-        group.MapGet("/debug-token", (HttpContext ctx) =>
-        {
-            var auth = ctx.Request.Headers.Authorization.ToString();
-            Console.WriteLine("AUTH HEADER: " + auth);
-
-            return Results.Ok(auth);
-        });*/
-
         return app;
     }
 }

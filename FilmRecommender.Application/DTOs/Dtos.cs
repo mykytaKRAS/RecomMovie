@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace FilmRecommender.Application.DTOs;
 
-// ── Auth ──────────────────────────────────────────
+// Auth
 
 public record RegisterRequest(
     string Email,
@@ -26,7 +26,7 @@ public record AuthResponse(
     string Token
 );
 
-// ── Movies ────────────────────────────────────────
+// Movies
 
 public record MovieSummaryDto(
     Guid Id,
@@ -73,7 +73,7 @@ public record PagedResult<T>(
     public bool HasPrev => Page > 1;
 }
 
-// ── Ratings ───────────────────────────────────────
+// Ratings
 
 public record UserRatingDto(
     Guid Id,
@@ -93,24 +93,15 @@ public record UpdateRatingRequest(
     string? Review
 );
 
-// ── Survey ────────────────────────────────────────
+// Survey
 
 public record SurveyQuestionDto(
     int GenreId,
     string GenreName
 );
-/*
-public record SubmitSurveyRequest(
-    // GenreId → оцінка від 0 до 1
-    Dictionary<int, decimal> GenreWeights,
-    // Улюблені фільми (до 5)
-    List<Guid> FavoriteMovieIds
-);
-*/
 public record SubmitSurveyRequest(
     Dictionary<int, decimal> GenreWeights,
     List<Guid> FavoriteMovieIds,
-    // Додаткові ваги для не-жанрових ознак (мова, декада)
     Dictionary<string, decimal>? ExtraWeights = null
 );
 public record SurveyResponseDto(
@@ -119,7 +110,7 @@ public record SurveyResponseDto(
     bool IsCompleted
 );
 
-// ── Recommendations ───────────────────────────────
+// Recommendations
 
 public record RecommendationDto(
     Guid RecommendationId,
@@ -128,7 +119,7 @@ public record RecommendationDto(
     string Algorithm
 );
 
-// ── WatchList ─────────────────────────────────────
+// WatchList
 
 public record WatchListItemDto(
     Guid Id,
@@ -145,7 +136,7 @@ public record UpdateWatchStatusRequest(
     string Status
 );
 
-// ── Common ────────────────────────────────────────
+// Common
 
 public record ErrorResponse(
     string Message,
@@ -156,7 +147,7 @@ public record SuccessResponse(
     string Message
 );
 
-// ── User ──────────────────────────────────────────
+// User
 
 public record UserProfileDto(
     Guid Id,
@@ -165,7 +156,7 @@ public record UserProfileDto(
     DateTime CreatedAt
 );
 
-// ── My ratings ────────────────────────────────────
+// My ratings
 
 public record MyRatingDto(
     Guid RatingId,
@@ -175,7 +166,7 @@ public record MyRatingDto(
     DateTime RatedAt
 );
 
-// ── Recommendations ───────────────────────────────────────────
+// Recommendations
 
 public record RecommendationStatusDto(
     int RatingCount,

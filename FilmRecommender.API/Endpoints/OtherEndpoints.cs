@@ -5,7 +5,7 @@ using FilmRecommender.Domain.Interfaces;
 
 namespace FilmRecommender.API.Endpoints;
 
-// ── Genre ─────────────────────────────────────────────────────
+// Genre
 
 public static class GenreEndpoints
 {
@@ -21,7 +21,7 @@ public static class GenreEndpoints
     }
 }
 
-// ── Rating ────────────────────────────────────────────────────
+// Rating
 
 public static class RatingEndpoints
 {
@@ -71,7 +71,7 @@ public static class RatingEndpoints
     }
 }
 
-// ── Survey ────────────────────────────────────────────────────
+// Survey
 
 public static class SurveyEndpoints
 {
@@ -109,7 +109,7 @@ public static class SurveyEndpoints
     }
 }
 
-// ── WatchList ─────────────────────────────────────────────────
+// WatchList
 
 public static class WatchListEndpoints
 {

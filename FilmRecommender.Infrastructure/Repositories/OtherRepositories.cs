@@ -13,7 +13,7 @@ using System.Text.Json;
 
 namespace FilmRecommender.Infrastructure.Repositories;
 
-// ── Genre ─────────────────────────────────────────────────────
+// Genre
 
 public class GenreRepository : IGenreRepository
 {
@@ -34,7 +34,7 @@ public class GenreRepository : IGenreRepository
     }
 }
 
-// ── UserRating ────────────────────────────────────────────────
+// UserRating
 
 public class UserRatingRepository : IUserRatingRepository
 {
@@ -82,7 +82,7 @@ public class UserRatingRepository : IUserRatingRepository
     }
 }
 
-// ── UserPreference ────────────────────────────────────────────
+// UserPreference
 
 public class UserPreferenceRepository : IUserPreferenceRepository
 {
@@ -115,7 +115,7 @@ public class UserPreferenceRepository : IUserPreferenceRepository
     }
 }
 
-// ── Survey ────────────────────────────────────────────────────
+// Survey
 
 public class SurveyRepository : ISurveyRepository
 {
@@ -175,7 +175,7 @@ public class SurveyRepository : ISurveyRepository
     }
 }
 
-// ── Recommendation ────────────────────────────────────────────
+// Recommendation
 
 public class RecommendationRepository : IRecommendationRepository
 {
@@ -223,7 +223,7 @@ public class RecommendationRepository : IRecommendationRepository
     }
 }
 
-// ── WatchList ─────────────────────────────────────────────────
+// WatchList
 
 public class WatchListRepository : IWatchListRepository
 {

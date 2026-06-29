@@ -1,6 +1,4 @@
-﻿// FilmRecommender.Application/Services/ContentBasedService.cs
-
-using FilmRecommender.Domain.Interfaces;
+﻿using FilmRecommender.Domain.Interfaces;
 using FilmRecommender.Domain.Models;
 
 namespace FilmRecommender.Application.Services;
@@ -24,10 +22,7 @@ public class ContentBasedService
         _watchList = watchList;
     }
 
-    // ══════════════════════════════════════════════════════════
-    // PRODUCTION метод — використовується фронтендом
-    // Читає ВСІ оцінки користувача з БД
-    // ══════════════════════════════════════════════════════════
+    // PRODUCTION метод
 
     public async Task<IEnumerable<Recommendation>> GetRecommendationsAsync(
         Guid userId, int limit = 20)
@@ -44,11 +39,7 @@ public class ContentBasedService
         return await ScoreAndRankAsync(userId, userVector, seenIds, limit);
     }
 
-    // ══════════════════════════════════════════════════════════
-    // EVALUATION метод — використовується тільки EvaluationService
-    // Отримує trainRatings ззовні — не читає з БД
-    // Отримує excludeIds ззовні — включаючи test set
-    // ══════════════════════════════════════════════════════════
+    // EVALUATION метод
 
     public async Task<IEnumerable<Recommendation>> GetRecommendationsForEvalAsync(
         Guid userId,
@@ -64,9 +55,7 @@ public class ContentBasedService
         return await ScoreAndRankAsync(userId, userVector, excludeIds, limit);
     }
 
-    // ══════════════════════════════════════════════════════════
-    // SHARED — спільна логіка для обох методів
-    // ══════════════════════════════════════════════════════════
+    // SHARED логіка 
 
     private async Task<IEnumerable<Recommendation>> ScoreAndRankAsync(
         Guid userId,
@@ -106,34 +95,27 @@ public class ContentBasedService
     {
         var vector = new Dictionary<string, double>();
 
-        // 1. Дані з опитувальника (вага 40%)
+        // Дані з опитувальника (вага 40%)
         var survey = await _survey.GetByUserIdAsync(userId);
         if (survey != null)
         {
             foreach (var (key, val) in survey.PreferenceVector)
             {
-                // ВАЖЛИВО: Прибрано префікс $"survey_{key}". 
-                // Тепер ключі збігаються з ключами у векторах фільмів.
                 vector[key] = (double)val * 0.4;
             }
         }
 
-        // 2. Дані з оцінок (вага 60%) — БЕРЕМО ВСІ оцінки, а не тільки >= 6
+        // Дані з оцінок (вага 60%)
         foreach (var (movieId, rating) in ratings)
         {
             var movieVector = await _scoring.GetFeatureVectorAsync(movieId);
             if (movieVector is null) continue;
 
-            // Трансформуємо оцінку (1..10) у відхилення від нейтральної 5.5
-            // Оцінка 10 -> вага +1.0 (максимальний позитив)
-            // Оцінка 5.5 -> вага 0 (нейтрально)
-            // Оцінка 1 -> вага -1.0 (максимальний негатив)
-            var weight = ((rating - 5.5) / 4.5) * 0.6;
+            //var weight = ((rating - 5.5) / 4.5) * 0.6;
+            var weight = (rating / 10.0) * 0.6;
 
             foreach (var (key, val) in movieVector)
             {
-                // Якщо користувач поставив низьку оцінку, weight буде від'ємним,
-                // і ця характеристика "мінусуватиметься" з його профілю.
                 vector[key] = vector.GetValueOrDefault(key) + (val * weight);
             }
         }

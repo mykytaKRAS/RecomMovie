@@ -26,7 +26,6 @@ namespace FilmRecommender.Infrastructure.Services
         {
             using var conn = _db.CreateConnection();
 
-            // Отримуємо всі фільми з їх жанрами
             var movies = await conn.QueryAsync<dynamic>(@"
             SELECT
                 m.id,
@@ -68,7 +67,6 @@ namespace FilmRecommender.Infrastructure.Services
         {
             var vector = new Dictionary<string, double>();
 
-            // ── Жанри (бінарні ознаки) ───────────────────────────
             var genreNames = ((string?)movie.genre_names ?? "").Split(',',
                 StringSplitOptions.RemoveEmptyEntries);
 
@@ -87,17 +85,16 @@ namespace FilmRecommender.Infrastructure.Services
                     ? 1.0 : 0.0;
             }
 
-            // ── Нормалізований рейтинг [0..1] ────────────────────
+            // Нормалізований рейтинг [0..1]
             vector["rating_norm"] = maxRating > 0
                 ? Math.Min((double)(movie.avg_rating ?? 0) / maxRating, 1.0)
                 : 0.0;
 
-            // ── Нормалізована популярність [0..1] ─────────────────
+            // Нормалізована популярність [0..1]
             vector["popularity_norm"] = maxPopularity > 0
                 ? Math.Min((double)(movie.popularity_score ?? 0) / maxPopularity, 1.0)
                 : 0.0;
 
-            // ── Декада випуску (one-hot) ──────────────────────────
             var year = (int?)movie.release_year ?? 0;
             var decades = new[] { 1970, 1980, 1990, 2000, 2010, 2020 };
             foreach (var decade in decades)
@@ -106,7 +103,6 @@ namespace FilmRecommender.Infrastructure.Services
                     (year >= decade && year < decade + 10) ? 1.0 : 0.0;
             }
 
-            // ── Мова (one-hot для топ мов) ────────────────────────
             var lang = (string?)movie.original_language ?? "";
             foreach (var l in new[] { "en", "fr", "de", "ja", "ko", "es", "it" })
                 vector[$"lang_{l}"] = lang == l ? 1.0 : 0.0;

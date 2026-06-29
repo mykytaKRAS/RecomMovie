@@ -12,7 +12,6 @@ public interface IMovieRepository
     Task<IEnumerable<Movie>> GetAllAsync(MovieFilter filter, int page, int pageSize);
     Task<int> CountAsync(MovieFilter filter);
     Task<Movie?> GetByIdAsync(Guid id);
-    //Task<IEnumerable<Movie>> SearchAsync(string query, int page, int pageSize);
     Task<IEnumerable<Movie>> GetByGenreAsync(int genreId, int page, int pageSize);
 }
 
